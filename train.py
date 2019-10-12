@@ -68,7 +68,7 @@ def main():
     #Initialise Dataset
     input_folder = '../Image_crops/'
     target_folder = '../Map_crops/'
-    batch_size = 1
+    batch_size = 20
     n_workers = multiprocessing.cpu_count()
     dataset = data_load.dataset(input_folder, target_folder, model)
 
@@ -84,7 +84,7 @@ def main():
 
     #Setup defaults:
     start_epoch = 0
-
+    best_valid_acc = 0
     #Create the save directory if it does note exist
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -111,7 +111,7 @@ def main():
                 raise ValueError("Warning Checkpoint exists")
             else:
                 print("Starting from scratch")
-    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=20)
+    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=2)
 
 if __name__ == '__main__':
     main()

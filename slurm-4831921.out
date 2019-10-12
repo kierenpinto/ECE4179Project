@@ -1,0 +1,28 @@
+Traceback (most recent call last):
+  File "train.py", line 117, in <module>
+    main()
+  File "train.py", line 73, in main
+    dataset = data_load.dataset(input_folder, target_folder, model)
+  File "/mnt/lustre/projects/ds19/eng121/ECE4179Project/data_load.py", line 18, in __init__
+    self.resize_shape = model(torch.zeros(1, c, h, w)).shape
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/module.py", line 493, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/mnt/lustre/projects/ds19/eng121/ECE4179Project/u_net.py", line 80, in forward
+    x1 = self.encoder0(x)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/module.py", line 493, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/mnt/lustre/projects/ds19/eng121/ECE4179Project/u_net.py", line 36, in forward
+    x = self.layer(x)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/module.py", line 493, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/container.py", line 92, in forward
+    input = module(input)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/module.py", line 493, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/mnt/lustre/projects/ds19/eng121/ECE4179Project/u_net.py", line 13, in forward
+    x = self.conv(x)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/module.py", line 493, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/pytorch/1.1-cuda10/pytorch-1.1-cuda10-venv/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 338, in forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: Input type (torch.FloatTensor) and weight type (torch.cuda.FloatTensor) should be the same
