@@ -6,6 +6,7 @@ import u_net
 from torch import optim
 import time
 import copy
+import os
 
 def accuracy(fx, y):
     ''' Calculate Accuracy of Network'''
@@ -15,15 +16,20 @@ def accuracy(fx, y):
     # return acc
     return 0
 
-def train(model,optimizer,device,loss_fn,dataloader,n_epochs=20):
+def save_model(Save_Path,model,epoch,optimizer,train_acc):
+    torch.save({
+        'epoch':                 epoch,
+        'model_state_dict':      model.state_dict(),
+        'optimizer_state_dict':  optimizer.state_dict(), 
+        'train_acc':             train_acc,
+        # 'valid_acc':             valid_acc,
+        }, Save_Path)
+
+def train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_acc = 0, start_epoch=0,n_epochs=20):
     ''' Train the Network '''
-    #Create empty lists to store losses
-    Train_loss = []
-    Train_acc = []
-    best_acc = 0
     train_acc = 1
     # Iterate through each epoch
-    for epoch in range(n_epochs):
+    for epoch in range(start_epoch,n_epochs):
         print("Running Epoch No: {}".format(epoch))
         running_loss_train = 0.0
         start_time = time.time()
@@ -43,20 +49,14 @@ def train(model,optimizer,device,loss_fn,dataloader,n_epochs=20):
             loss.backward()#Backward pass through model and update the model weights
             optimizer.step()  
         running_loss_train /= len(dataloader)
-        Train_loss.append(running_loss_train)
         # train_acc = calculate_accuracy(torch.cat(labels_predict),torch.cat(labels))
-        # Train_acc.append(train_acc)
-
+        end_time = time.time()
         # Store Best Model
         if train_acc > best_acc:
             best_acc = train_acc
-            model_dict = model.state_dict()
-            Best_model = copy.deepcopy(model_dict)
-        end_time = time.time()
-        torch.save(model.state_dict(),'model')
-        # print('[Epoch {0:02d}] Train Loss: {1:.4f}, Train Acc: {2:.4f}, Time: {3:.4f}s'.format(
-        #     epoch, running_loss_train,train_acc,end_time - start_time))
-    return Train_loss, Train_acc, Best_model
+            save_model(Save_Path,model,epoch,optimizer,train_acc)
+        print('[Epoch {0:02d}] Train Loss: {1:.4f}, Train Acc: {2:.4f}, Time: {3:.4f}s'.format(
+            epoch, running_loss_train,train_acc,end_time - start_time))
 
 def main():
     #Set GPU device if available
@@ -64,7 +64,7 @@ def main():
     device = torch.device("cuda" if cuda else "cpu")
     # Initialise Model
     model = u_net.unet().to(device)
-
+    Start_From_Checkpoint = True
     #Initialise Dataset
     input_folder = '../Image_crops/'
     target_folder = '../Map_crops/'
@@ -77,7 +77,41 @@ def main():
                                             shuffle=True, num_workers=n_workers)
     optimizer = optim.Adam(model.parameters(), lr = 1e-3)
     loss_fn = nn.CrossEntropyLoss()
-    train(model,optimizer,device,loss_fn,dataloader)
+    save_dir = './'
+    model_name = 'Unet'
+    #Create Save Path from save_dir and model_name, we will save and load our checkpoint here
+    Save_Path = os.path.join(save_dir, model_name + ".pt")
+
+    #Setup defaults:
+    start_epoch = 0
+
+    #Create the save directory if it does note exist
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir)
+
+        #Load Checkpoint
+        if Start_From_Checkpoint:
+            #Check if checkpoint exists
+            if os.path.isfile(Save_Path):
+                #load Checkpoint
+                check_point = torch.load(Save_Path)
+                #Checkpoint is saved as a python dictionary
+                model.load_state_dict(check_point['model_state_dict'])
+                optimizer.load_state_dict(check_point['optimizer_state_dict'])
+                start_epoch = check_point['epoch']
+                best_valid_acc = check_point['train_acc'] #CHANGE THIS TO VALIDATION ACCURACY
+                print("Checkpoint loaded, starting from epoch:", start_epoch)
+            else:
+                #Raise Error if it does not exist
+                raise ValueError("Checkpoint Does not exist")
+        else:
+            #If checkpoint does exist and Start_From_Checkpoint = False
+            #Raise an error to prevent accidental overwriting
+            if os.path.isfile(Save_Path):
+                raise ValueError("Warning Checkpoint exists")
+            else:
+                print("Starting from scratch")
+    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=20)
 
 if __name__ == '__main__':
     main()
