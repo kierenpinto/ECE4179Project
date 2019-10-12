@@ -34,7 +34,7 @@ def train(model,optimizer,device,loss_fn,dataloader,n_epochs=20):
             target = target.to(device)
             outputs = model(image) #Forward pass through model
             # print(outputs.permute(0,2,3,1).view(-1,2).shape)
-            new_outputs = outputs.permute(0,2,3,1).view(-1,2)
+            new_outputs = outputs.permute(0,2,3,1).view(-1,6)
             new_targets = target.view(-1).long()
             # print(target.view(-1).shape)
             loss = loss_fn(new_outputs,new_targets)#Compute cross entropy loss
@@ -63,12 +63,12 @@ def main():
     cuda = torch.cuda.is_available()
     device = torch.device("cuda" if cuda else "cpu")
     # Initialise Model
-    model = u_net.unet().float().to(device)
+    model = u_net.unet().to(device)
 
     #Initialise Dataset
     input_folder = '../Image_crops/'
     target_folder = '../Map_crops/'
-    batch_size = 10
+    batch_size = 1
     n_workers = multiprocessing.cpu_count()
     dataset = data_load.dataset(input_folder, target_folder, model)
 

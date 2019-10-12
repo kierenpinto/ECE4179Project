@@ -20,11 +20,11 @@ class dataset(Dataset):
         self.transform = Transforms.ToTensor()
 
     def __getitem__(self, index):
-        image = cv2.imread(self.input_folder+self.inputs[index])/255
-        image = self.transform(image).float()
+        image = cv2.imread(self.input_folder+self.inputs[index])
+        image = self.transform(image)
         target = cv2.imread(self.target_folder+self.targets[index])
         target = cv2.resize(target, (self.resize_shape[2:]))
-        target = self.transform(target)[0]*255
+        target = self.transform(target)[0]
         return [image, target]
 
     def __len__(self):
