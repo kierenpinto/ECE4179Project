@@ -66,8 +66,8 @@ def main():
     model = u_net.unet().to(device)
     Start_From_Checkpoint = True
     #Initialise Dataset
-    input_folder = '../Image_crops/'
-    target_folder = '../Map_crops/'
+    input_folder = '/mnt/lustre/projects/ds19/eng121/Image_crops/'
+    target_folder = '/mnt/lustre/projects/ds19/eng121/Map_crops/'
     batch_size = 5
     n_workers = multiprocessing.cpu_count()
     dataset = data_load.dataset(input_folder, target_folder, model, device)
@@ -89,29 +89,29 @@ def main():
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-        #Load Checkpoint
-        if Start_From_Checkpoint:
-            #Check if checkpoint exists
-            if os.path.isfile(Save_Path):
-                #load Checkpoint
-                check_point = torch.load(Save_Path)
-                #Checkpoint is saved as a python dictionary
-                model.load_state_dict(check_point['model_state_dict'])
-                optimizer.load_state_dict(check_point['optimizer_state_dict'])
-                start_epoch = check_point['epoch']
-                best_valid_acc = check_point['train_acc'] #CHANGE THIS TO VALIDATION ACCURACY
-                print("Checkpoint loaded, starting from epoch:", start_epoch)
-            else:
-                #Raise Error if it does not exist
-                raise ValueError("Checkpoint Does not exist")
+    #Load Checkpoint
+    if Start_From_Checkpoint:
+        #Check if checkpoint exists
+        if os.path.isfile(Save_Path):
+            #load Checkpoint
+            check_point = torch.load(Save_Path)
+            #Checkpoint is saved as a python dictionary
+            model.load_state_dict(check_point['model_state_dict'])
+            optimizer.load_state_dict(check_point['optimizer_state_dict'])
+            start_epoch = check_point['epoch']
+            best_valid_acc = check_point['train_acc'] #CHANGE THIS TO VALIDATION ACCURACY
+            print("Checkpoint loaded, starting from epoch:", start_epoch)
         else:
-            #If checkpoint does exist and Start_From_Checkpoint = False
-            #Raise an error to prevent accidental overwriting
-            if os.path.isfile(Save_Path):
-                raise ValueError("Warning Checkpoint exists")
-            else:
-                print("Starting from scratch")
-    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=2)
+            #Raise Error if it does not exist
+            raise ValueError("Checkpoint Does not exist")
+    else:
+        #If checkpoint does exist and Start_From_Checkpoint = False
+        #Raise an error to prevent accidental overwriting
+        if os.path.isfile(Save_Path):
+            raise ValueError("Warning Checkpoint exists")
+        else:
+            print("Starting from scratch")
+    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=11)
 
 if __name__ == '__main__':
     main()
