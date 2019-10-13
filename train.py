@@ -40,7 +40,7 @@ def train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_acc = 0, star
             target = target.to(device)
             outputs = model(image) #Forward pass through model
             # print(outputs.permute(0,2,3,1).view(-1,2).shape)
-            new_outputs = outputs.permute(0,2,3,1).view(-1,6)
+            new_outputs = outputs.permute(0,2,3,1).reshape(-1,6)
             new_targets = target.view(-1).long()
             # print(target.view(-1).shape)
             loss = loss_fn(new_outputs,new_targets)#Compute cross entropy loss
