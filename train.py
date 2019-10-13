@@ -68,9 +68,9 @@ def main():
     #Initialise Dataset
     input_folder = '../Image_crops/'
     target_folder = '../Map_crops/'
-    batch_size = 20
+    batch_size = 5
     n_workers = multiprocessing.cpu_count()
-    dataset = data_load.dataset(input_folder, target_folder, model)
+    dataset = data_load.dataset(input_folder, target_folder, model, device)
 
     #Initialise Dataloader
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,

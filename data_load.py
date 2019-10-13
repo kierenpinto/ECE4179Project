@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as Transforms
 
 class dataset(Dataset):
-    def __init__(self, input_folder, target_folder, model):
+    def __init__(self, input_folder, target_folder, model,device):
         super(dataset,self).__init__()
         self.input_folder = input_folder
         self.target_folder = target_folder
@@ -15,7 +15,7 @@ class dataset(Dataset):
         h, w, c = cv2.imread("{}{}".format(input_folder,self.inputs[0])).shape
         self.model = model
 
-        self.resize_shape = model(torch.zeros(1, c, h, w)).shape
+        self.resize_shape = model(torch.zeros(1, c, h, w).to(device)).shape
 
         self.transform = Transforms.ToTensor()
 
