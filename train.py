@@ -1,18 +1,19 @@
 import torch.nn as nn
 import torch 
-import data_load
+from data_load import dataset
 import multiprocessing
 import u_net
 from torch import optim
 import time
 import copy
 import os
+import numpy as np
 
 def calculate_accuracy(fx, y):
     preds = fx.max(1, keepdim=True)[1] #Argmax
     correct = preds.eq(y.view_as(preds).to(torch.long)).sum()
-    print("prediction",preds)
-    print("y",y)
+#     print("prediction",preds)
+#     print("y",y)
     return correct
 
 def test(model, loader,loss_fn):
@@ -36,52 +37,69 @@ def test(model, loader,loss_fn):
             del target
             torch.cuda.empty_cache()
     running_loss /= len(loader)
-    accuracy = (sum(num_correct).float()/(sum(target_shape))).item()
-    print(target_shape)
-    print(num_correct)
+    accuracy = (torch.tensor(num_correct).sum().float()/(sum(target_shape))).item()
+    # print(target_shape)
+    # print(num_correct)
     return running_loss, accuracy
 
-def save_model(Save_Path,model,epoch,optimizer,train_acc):
+def save_model(Save_Path,model,epoch,optimizer,train_loss, train_acc, valid_loss ,valid_acc, best_acc):
     torch.save({
         'epoch':                 epoch,
         'model_state_dict':      model.state_dict(),
-        'optimizer_state_dict':  optimizer.state_dict(), 
+        'optimizer_state_dict':  optimizer.state_dict(),
+        'train_loss':            train_loss,
         'train_acc':             train_acc,
-        # 'valid_acc':             valid_acc,
+        'valid_loss':            valid_loss,
+        'valid_acc':             valid_acc,
+        'best_acc':              best_acc,
         }, Save_Path)
 
-def train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_acc = 0, start_epoch=0,n_epochs=20):
+def train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloader, best_acc = 0, start_epoch=0,n_epochs=20, train_loss = [],train_acc = [], val_loss = [], val_acc = []):
     ''' Train the Network '''
-    train_acc = 1
     # Iterate through each epoch
     for epoch in range(start_epoch,n_epochs):
         print("Running Epoch No: {}".format(epoch))
         running_loss_train = 0.0
         start_time = time.time()
+        num_correct = []
+        target_shape = []
         model.train() # put into training mode
         for i, (image, target) in enumerate(dataloader):   #For each training batch...
             print("running batch no: {}".format(i))
             image = image.to(device) #Move images and targets to device
             target = target.to(device)
             outputs = model(image) #Forward pass through model
-            # print(outputs.permute(0,2,3,1).view(-1,2).shape)
-            new_outputs = outputs.permute(0,2,3,1).reshape(-1,6)
+            new_outputs = outputs.permute(0,2,3,1).reshape(-1,4)
             new_targets = target.view(-1).long()
-            # print(target.view(-1).shape)
             loss = loss_fn(new_outputs,new_targets)#Compute cross entropy loss
             running_loss_train += loss.item()
+            num_correct.append(calculate_accuracy(new_outputs, new_targets))
+            target_shape.append(new_targets.shape[0])
             optimizer.zero_grad()#Gradients are accumulated, so they should be zeroed before calling backwards
             loss.backward()#Backward pass through model and update the model weights
             optimizer.step()  
         running_loss_train /= len(dataloader)
-        # train_acc = calculate_accuracy(torch.cat(labels_predict),torch.cat(labels))
+        train_loss.append(running_loss_train) # Training Loss
+        # print("sum num correct",torch.tensor(num_correct).sum().float())
+        # print("target_shape", target_shape)
+        # print("target shape sum", sum(target_shape))
+        train_acc.append((torch.tensor(num_correct).sum().float()/(sum(target_shape))).item()) # Append Training Accuracy
+        vloss, vacc = test(model,valloader,loss_fn) # Run test
+        val_loss.append(vloss) # Append validation loss
+        val_acc.append(vacc) # Append validation accuracy
         end_time = time.time()
         # Store Best Model
-        if train_acc > best_acc:
-            best_acc = train_acc
-            save_model(Save_Path,model,epoch,optimizer,train_acc)
-        print('[Epoch {0:02d}] Train Loss: {1:.4f}, Train Acc: {2:.4f}, Time: {3:.4f}s'.format(
-            epoch, running_loss_train,train_acc,end_time - start_time))
+        if train_acc[-1] > best_acc:
+            best_acc = train_acc[-1] # Save on best epoch
+            Save_Path = os.path.join(save_dir, model_name + "_" + str(epoch) + "_best.pt")
+            save_model(Save_Path,model,epoch,optimizer,train_loss,train_acc,val_loss,val_acc,best_acc)
+        if (not epoch%5 ): # Save every 5 epochs
+            Save_Path = os.path.join(save_dir, model_name + "_" + str(epoch) + ".pt")
+            save_model(Save_Path,model,epoch,optimizer,train_loss,train_acc,val_loss,val_acc,best_acc)
+
+        print('[Epoch {0:02d}] Train Loss: {1:.4f}, Train Acc: {2:.4f}, Val Loss: {3:.4f}, Val Acc: {4:.4f}, Time: {5:.4f}s'.format(
+            epoch, running_loss_train,train_acc[-1], val_loss[-1], val_acc[-1],end_time - start_time))
+    return train_loss, train_acc, val_loss, val_acc
 
 def main():
     #Set GPU device if available
@@ -107,11 +125,16 @@ def main():
     save_dir = './'
     model_name = 'Unet'
     #Create Save Path from save_dir and model_name, we will save and load our checkpoint here
-    Save_Path = os.path.join(save_dir, model_name + ".pt")
+    # Save_Path = os.path.join(save_dir, model_name + ".pt")
+    Load_Path = os.path.join(save_dir, model_name + ".pt")
 
     #Setup defaults:
     start_epoch = 0
     best_valid_acc = 0
+    train_loss = []
+    train_acc = []
+    valid_loss = []
+    valid_acc = []
     #Create the save directory if it does note exist
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -119,14 +142,19 @@ def main():
     #Load Checkpoint
     if Start_From_Checkpoint:
         #Check if checkpoint exists
-        if os.path.isfile(Save_Path):
+        if os.path.isfile(Load_Path):
             #load Checkpoint
-            check_point = torch.load(Save_Path)
+            check_point = torch.load(Load_Path)
             #Checkpoint is saved as a python dictionary
             model.load_state_dict(check_point['model_state_dict'])
             optimizer.load_state_dict(check_point['optimizer_state_dict'])
             start_epoch = check_point['epoch']
-            best_valid_acc = check_point['train_acc'] #CHANGE THIS TO VALIDATION ACCURACY
+            best_valid_acc = check_point['best_acc']
+            train_loss = check_point['train_loss']
+            train_acc = check_point['train_acc']
+            valid_loss = check_point['valid_loss']
+            valid_acc = check_point['valid_acc']
+            
             print("Checkpoint loaded, starting from epoch:", start_epoch)
         else:
             #Raise Error if it does not exist
@@ -134,11 +162,11 @@ def main():
     else:
         #If checkpoint does exist and Start_From_Checkpoint = False
         #Raise an error to prevent accidental overwriting
-        if os.path.isfile(Save_Path):
+        if os.path.isfile(Load_Path):
             raise ValueError("Warning Checkpoint exists")
         else:
             print("Starting from scratch")
-    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=2)
+    train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloader,best_valid_acc,start_epoch,n_epochs=2,train_loss = train_loss,train_acc=train_acc, val_loss = valid_loss, val_acc = valid_acc)
 
 if __name__ == '__main__':
     main()
