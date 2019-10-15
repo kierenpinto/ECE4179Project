@@ -8,13 +8,38 @@ import time
 import copy
 import os
 
-def accuracy(fx, y):
-    ''' Calculate Accuracy of Network'''
-    # preds = fx.max(1, keepdim=True)[1]
-    # correct = preds.eq(y.view_as(preds).to(torch.long)).sum()
-    # acc = correct.float()/preds.shape[0]
-    # return acc
-    return 0
+def calculate_accuracy(fx, y):
+    preds = fx.max(1, keepdim=True)[1] #Argmax
+    correct = preds.eq(y.view_as(preds).to(torch.long)).sum()
+    print("prediction",preds)
+    print("y",y)
+    return correct
+
+def test(model, loader,loss_fn):
+    '''Calculates accuracy on a dataset'''
+    model.eval()
+    num_correct = []
+    target_shape = []
+    running_loss = 0.0
+    with torch.no_grad():
+        for i, (image, target) in enumerate(loader):
+            print("Forward batch {}".format(i))
+            image = image.to(device)
+            target = target.to(device).view(-1) # [5,324,324]->[524880]
+            target_predict = model.forward(image).permute(0,2,3,1).reshape(-1,4) #[5,4,324,324]->[5,324,324,4]->[524880,4]
+            loss = loss_fn(target_predict,target.to(torch.long))
+            running_loss += loss.item()
+            num_correct.append(calculate_accuracy(target_predict, target))
+            target_shape.append(target.shape[0])
+            del loss
+            del target_predict
+            del target
+            torch.cuda.empty_cache()
+    running_loss /= len(loader)
+    accuracy = (sum(num_correct).float()/(sum(target_shape))).item()
+    print(target_shape)
+    print(num_correct)
+    return running_loss, accuracy
 
 def save_model(Save_Path,model,epoch,optimizer,train_acc):
     torch.save({
@@ -70,10 +95,12 @@ def main():
     target_folder = '/mnt/lustre/projects/ds19/eng121/Map_crops/'
     batch_size = 5
     n_workers = multiprocessing.cpu_count()
-    dataset = data_load.dataset(input_folder, target_folder, model, device)
-
+    trainset = dataset(input_folder, target_folder, model,device,False)
+    valset = dataset(input_folder,target_folder,model,device,True)
     #Initialise Dataloader
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+    dataloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                            shuffle=True, num_workers=n_workers)
+    valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size,
                                             shuffle=True, num_workers=n_workers)
     optimizer = optim.Adam(model.parameters(), lr = 1e-3)
     loss_fn = nn.CrossEntropyLoss()
@@ -111,7 +138,7 @@ def main():
             raise ValueError("Warning Checkpoint exists")
         else:
             print("Starting from scratch")
-    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=11)
+    train(Save_Path,model,optimizer,device,loss_fn,dataloader,best_valid_acc,start_epoch,n_epochs=2)
 
 if __name__ == '__main__':
     main()
