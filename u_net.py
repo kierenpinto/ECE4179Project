@@ -74,7 +74,7 @@ class unet(nn.Module):
         self.decoder2 = decode_layer(channels[-4:-2])
         self.decoder3 = decode_layer(channels[-5:-3])
 
-        self.final = nn.Conv2d(in_channels=channels[1], out_channels=6, kernel_size=1)
+        self.final = nn.Conv2d(in_channels=channels[1], out_channels=4, kernel_size=1)
 
     def forward(self,x):
         x1 = self.encoder0(x)
