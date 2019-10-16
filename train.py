@@ -16,7 +16,7 @@ def calculate_accuracy(fx, y):
 #     print("y",y)
     return correct
 
-def test(model, loader,loss_fn):
+def test(model, loader,loss_fn,device):
     '''Calculates accuracy on a dataset'''
     model.eval()
     num_correct = []
@@ -84,7 +84,7 @@ def train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloade
         # print("target_shape", target_shape)
         # print("target shape sum", sum(target_shape))
         train_acc.append((torch.tensor(num_correct).sum().float()/(sum(target_shape))).item()) # Append Training Accuracy
-        vloss, vacc = test(model,valloader,loss_fn) # Run test
+        vloss, vacc = test(model,valloader,loss_fn,device) # Run test
         val_loss.append(vloss) # Append validation loss
         val_acc.append(vacc) # Append validation accuracy
         end_time = time.time()
@@ -107,7 +107,7 @@ def main():
     device = torch.device("cuda" if cuda else "cpu")
     # Initialise Model
     model = u_net.unet().to(device)
-    Start_From_Checkpoint = True
+    Start_From_Checkpoint = False
     #Initialise Dataset
     input_folder = '/mnt/lustre/projects/ds19/eng121/Image_crops/'
     target_folder = '/mnt/lustre/projects/ds19/eng121/Map_crops/'
@@ -166,7 +166,7 @@ def main():
             raise ValueError("Warning Checkpoint exists")
         else:
             print("Starting from scratch")
-    train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloader,best_valid_acc,start_epoch,n_epochs=2,train_loss = train_loss,train_acc=train_acc, val_loss = valid_loss, val_acc = valid_acc)
+    train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloader,best_valid_acc,start_epoch,n_epochs=20,train_loss = train_loss,train_acc=train_acc, val_loss = valid_loss, val_acc = valid_acc)
 
 if __name__ == '__main__':
     main()
