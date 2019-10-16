@@ -10,14 +10,18 @@ class dataset(Dataset):
         super(dataset,self).__init__()
         self.input_folder = input_folder
         self.target_folder = target_folder
+        self.inputs = os.listdir(input_folder)
+        self.targets = os.listdir(target_folder)
+        self.targets.sort()
+        self.inputs.sort()
         if validation:
             ''' Uses validation set'''
-            self.inputs = os.listdir(input_folder)[5000:]
-            self.targets = os.listdir(target_folder)[5000:]
+            self.inputs = self.inputs[5000:]
+            self.targets = self.targets[5000:]
         else:
             ''' uses training set '''
-            self.inputs = os.listdir(input_folder)[0:2000]
-            self.targets = os.listdir(target_folder)[0:2000]
+            self.inputs = self.inputs[0:2000]
+            self.targets = self.targets[0:2000]
         h, w, c = cv2.imread("{}{}".format(input_folder,self.inputs[0])).shape
         self.model = model
 
