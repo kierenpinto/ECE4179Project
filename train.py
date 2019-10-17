@@ -107,6 +107,16 @@ def main():
     device = torch.device("cuda" if cuda else "cpu")
     # Initialise Model
     model = u_net.unet().to(device)
+    def initweights(layer):
+  
+    if type(layer)==nn.Conv2d:
+        kernsize=layer.kernel_size
+        cin=layer.in_channels
+        N=cin*kernsize[0]*kernsize[0]
+        standard=math.sqrt(2/N)
+        torch.nn.init.normal_(layer.weight,std=standard)
+    model.apply(initweights)
+    
     Start_From_Checkpoint = False
     #Initialise Dataset
     input_folder = '/mnt/lustre/projects/ds19/eng121/Image_crops/'
