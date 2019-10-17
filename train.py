@@ -89,8 +89,8 @@ def train(save_dir,model_name,model,optimizer,device,loss_fn,dataloader,valloade
         val_acc.append(vacc) # Append validation accuracy
         end_time = time.time()
         # Store Best Model
-        if train_acc[-1] > best_acc:
-            best_acc = train_acc[-1] # Save on best epoch
+        if val_acc[-1] > best_acc:
+            best_acc = val_acc[-1] # Save on best epoch
             Save_Path = os.path.join(save_dir, model_name + "_" + str(epoch) + "_best.pt")
             save_model(Save_Path,model,epoch,optimizer,train_loss,train_acc,val_loss,val_acc,best_acc)
         if (not epoch%5 ): # Save every 5 epochs
